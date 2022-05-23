@@ -15,8 +15,8 @@
  *  limitations under the License.
  *
  *=========================================================================*/
-#ifndef itkAttenuationImageFilter_h
-#define itkAttenuationImageFilter_h
+#ifndef itkBackscatterImageFilter_h
+#define itkBackscatterImageFilter_h
 
 #include <vector>
 
@@ -29,16 +29,16 @@
 
 namespace itk
 {
-/** \class AttenuationImageFilter
- * \brief Computes the estimated attentuation in dB/(MHz*cm)
+/** \class BackscatterImageFilter
+ * \brief Computes the estimated backscatter in dB/(MHz*cm)
  *
- * Attenuation is a measure of how an RF signal fades in strength
+ * Backscatter is a measure of how an RF signal fades in strength
  * as it passes through a physical region. In ultrasound analysis
- * signal attenuation tends to be roughly similar over areas
+ * signal backscatter tends to be roughly similar over areas
  * of similar material composition, such as different types of
  * tissue within an image.
  *
- * AttenuationImageFilter receives an input vector image representing
+ * BackscatterImageFilter receives an input vector image representing
  * RF spectra. One image direction represents the direction of an
  * RF waveform emitted from an ultrasound probe. Remaining image
  * directions may represent directions in physical space, such as
@@ -47,17 +47,17 @@ namespace itk
  * Each pixel in the input image is a vector representing frequency
  * components at bins based on the sampling frequency.
  * The filter also receives a mandatory mask input indicating the
- * region over which attenuations should be estimated.
+ * region over which backscatter should be estimated.
  *
- * AttenuationImageFilter generates a scalar output image with
- * pixel intensities representing attenuation estimates.
+ * BackscatterImageFilter generates a scalar output image with
+ * pixel intensities representing backscatter estimates.
  * Estimates are made in continuous segments of the mask region
  * along the RF sampling direction.
  *
  * There are three modes of computation, see documentation for
  * ComputationMode for detailed description.
  * Pixels outside of the mask after padding erosion will have a value of zero.
- * Pixels inside the mask for which the attenuation has not been computed
+ * Pixels inside the mask for which the backscatter has not been computed
  * will also have a value of zero.
  *
  * \sa MaskedImageToHistogramFilter
@@ -71,13 +71,13 @@ namespace itk
 template <typename TInputImage,
           typename TOutputImage = itk::Image<float, TInputImage::ImageDimension>,
           typename TMaskImage = itk::Image<unsigned char, TInputImage::ImageDimension>>
-class ITK_TEMPLATE_EXPORT AttenuationImageFilter : public ImageToImageFilter<TInputImage, TOutputImage>
+class ITK_TEMPLATE_EXPORT BackscatterImageFilter : public ImageToImageFilter<TInputImage, TOutputImage>
 {
 public:
-  ITK_DISALLOW_COPY_AND_MOVE(AttenuationImageFilter);
+  ITK_DISALLOW_COPY_AND_MOVE(BackscatterImageFilter);
 
   /** Standard class type aliases. */
-  using Self = AttenuationImageFilter;
+  using Self = BackscatterImageFilter;
   using Superclass = ImageToImageFilter<TInputImage, TOutputImage>;
   using Pointer = SmartPointer<Self>;
   using ConstPointer = SmartPointer<const Self>;
@@ -86,7 +86,7 @@ public:
   itkNewMacro(Self);
 
   /** Run-time type information (and related methods). */
-  itkTypeMacro(AttenuationImageFilter, ImageToImageFilter);
+  itkTypeMacro(BackscatterImageFilter, ImageToImageFilter);
 
   /** Image type alias support */
   static constexpr unsigned int ImageDimension = TInputImage::ImageDimension;
@@ -139,10 +139,10 @@ public:
   itkGetConstMacro(LabelValue, MaskPixelType);
 
   /** Fix the pixel distance between voxels for estimating
-   *  attenuation in a scan line.
+   *  backscatter in a scan line.
    *  If set to zero then the last continuous pixel
    *  in the inclusion will always be chosen as the
-   *  second pixel for attenuation calculation. */
+   *  second pixel for backscatter calculation. */
   itkSetMacro(FixedEstimationDepth, unsigned int);
   itkGetConstMacro(FixedEstimationDepth, unsigned int);
 
@@ -169,22 +169,22 @@ public:
   itkSetMacro(FrequencyBandEndMHz, float);
   itkGetConstMacro(FrequencyBandEndMHz, float);
 
-  /** Optionally discard negative attenuation estimates
+  /** Optionally discard negative backscatter estimates
    *  so that they are not considered in statistic computations.
-   *  Negative attenuation implies that a signal strengthened
+   *  Negative backscatter implies that a signal strengthened
    *  while passing through tissue and may result from
    *  sampling error or external interference. */
-  itkSetMacro(ConsiderNegativeAttenuations, bool);
-  itkGetConstMacro(ConsiderNegativeAttenuations, bool);
+  itkSetMacro(ConsiderNegativeBackscatter, bool);
+  itkGetConstMacro(ConsiderNegativeBackscatter, bool);
 
-  /** Skip attenuation estimation for a fixed number
+  /** Skip backscatter estimation for a fixed number
    *  of pixels at the start of an inclusion region.
    *  Applied before spatial padding.
    *  Can help with uncertainty at borders of mask.
    */
   itkSetMacro(PadUpperBounds, unsigned int);
   itkGetConstMacro(PadUpperBounds, unsigned int);
-  /** Skip attenuation estimation at the end of an inclusion region. */
+  /** Skip backscatter estimation at the end of an inclusion region. */
   itkSetMacro(PadLowerBounds, unsigned int);
   itkGetConstMacro(PadLowerBounds, unsigned int);
 
@@ -218,8 +218,8 @@ public:
   PrintSelf(std::ostream & os, Indent indent) const override;
 
 protected:
-  AttenuationImageFilter();
-  ~AttenuationImageFilter() override = default;
+  BackscatterImageFilter();
+  ~BackscatterImageFilter() override = default;
 
   void
   VerifyPreconditions() const override;
@@ -234,10 +234,10 @@ protected:
   const ImageRegionSplitterBase *
   GetImageRegionSplitter() const override;
 
-  /** Compute attenuation between two pixels in the RF spectra vector image.
+  /** Compute backscatter between two pixels in the RF spectra vector image.
    *  Assumes that image spacing is in MM. */
   OutputPixelType
-  ComputeAttenuation(const InputIndexType & end, const InputIndexType & start) const;
+  ComputeBackscatter(const InputIndexType & end, const InputIndexType & start) const;
 
   /** Transform spatial distance along an RF scan line to continuous pixel distance
    *  in the input image.
@@ -272,12 +272,12 @@ private:
   float m_FrequencyBandEndMHz = 0.0f;
   float m_FrequencyDelta = 0.0f;
 
-  // Frequency band to consider for attenuation
+  // Frequency band to consider for backscatter
   unsigned int m_StartComponent = 0;
   unsigned int m_EndComponent = 0;
   unsigned int m_ConsideredComponents = 1;
 
-  bool m_ConsiderNegativeAttenuations = false;
+  bool m_ConsiderNegativeBackscatter = false;
 
   /** Region splitter to ensure scanline is intact in threaded regions */
   ImageRegionSplitterDirection::Pointer m_RegionSplitter = ImageRegionSplitterDirection::New();
@@ -294,7 +294,7 @@ private:
 } // end namespace itk
 
 #ifndef ITK_MANUAL_INSTANTIATION
-#  include "itkAttenuationImageFilter.hxx"
+#  include "itkBackscatterImageFilter.hxx"
 #endif
 
 #endif

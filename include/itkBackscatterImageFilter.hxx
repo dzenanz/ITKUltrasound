@@ -15,8 +15,8 @@
  *  limitations under the License.
  *
  *=========================================================================*/
-#ifndef itkAttenuationImageFilter_hxx
-#define itkAttenuationImageFilter_hxx
+#ifndef itkBackscatterImageFilter_hxx
+#define itkBackscatterImageFilter_hxx
 
 #include <algorithm>
 #include <cmath>
@@ -33,7 +33,7 @@ namespace itk
 {
 
 template <typename TInputImage, typename TOutputImage, typename TMaskImage>
-AttenuationImageFilter<TInputImage, TOutputImage, TMaskImage>::AttenuationImageFilter()
+BackscatterImageFilter<TInputImage, TOutputImage, TMaskImage>::BackscatterImageFilter()
 {
   this->SetNumberOfRequiredInputs(1);
   this->DynamicMultiThreadingOff();
@@ -41,49 +41,49 @@ AttenuationImageFilter<TInputImage, TOutputImage, TMaskImage>::AttenuationImageF
 
 template <typename TInputImage, typename TOutputImage, typename TMaskImage>
 void
-AttenuationImageFilter<TInputImage, TOutputImage, TMaskImage>::SetFixedEstimationDepthMM(const float distanceMM)
+BackscatterImageFilter<TInputImage, TOutputImage, TMaskImage>::SetFixedEstimationDepthMM(const float distanceMM)
 {
   this->SetFixedEstimationDepth(TransformPhysicalToPixelScanLineDistance(distanceMM));
 }
 
 template <typename TInputImage, typename TOutputImage, typename TMaskImage>
 float
-AttenuationImageFilter<TInputImage, TOutputImage, TMaskImage>::GetFixedEstimationDepthMM() const
+BackscatterImageFilter<TInputImage, TOutputImage, TMaskImage>::GetFixedEstimationDepthMM() const
 {
   return this->TransformPixelToPhysicalScanLineDistance(this->GetFixedEstimationDepth());
 }
 
 template <typename TInputImage, typename TOutputImage, typename TMaskImage>
 void
-AttenuationImageFilter<TInputImage, TOutputImage, TMaskImage>::SetPadUpperBoundsMM(const float distanceMM)
+BackscatterImageFilter<TInputImage, TOutputImage, TMaskImage>::SetPadUpperBoundsMM(const float distanceMM)
 {
   this->SetPadUpperBounds(TransformPhysicalToPixelScanLineDistance(distanceMM));
 }
 
 template <typename TInputImage, typename TOutputImage, typename TMaskImage>
 float
-AttenuationImageFilter<TInputImage, TOutputImage, TMaskImage>::GetPadUpperBoundsMM() const
+BackscatterImageFilter<TInputImage, TOutputImage, TMaskImage>::GetPadUpperBoundsMM() const
 {
   return this->TransformPixelToPhysicalScanLineDistance(this->GetPadUpperBounds());
 }
 
 template <typename TInputImage, typename TOutputImage, typename TMaskImage>
 void
-AttenuationImageFilter<TInputImage, TOutputImage, TMaskImage>::SetPadLowerBoundsMM(const float distanceMM)
+BackscatterImageFilter<TInputImage, TOutputImage, TMaskImage>::SetPadLowerBoundsMM(const float distanceMM)
 {
   this->SetPadLowerBounds(TransformPhysicalToPixelScanLineDistance(distanceMM));
 }
 
 template <typename TInputImage, typename TOutputImage, typename TMaskImage>
 float
-AttenuationImageFilter<TInputImage, TOutputImage, TMaskImage>::GetPadLowerBoundsMM() const
+BackscatterImageFilter<TInputImage, TOutputImage, TMaskImage>::GetPadLowerBoundsMM() const
 {
   return this->TransformPixelToPhysicalScanLineDistance(this->GetPadLowerBounds());
 }
 
 template <typename TInputImage, typename TOutputImage, typename TMaskImage>
 const ImageRegionSplitterBase *
-AttenuationImageFilter<TInputImage, TOutputImage, TMaskImage>::GetImageRegionSplitter() const
+BackscatterImageFilter<TInputImage, TOutputImage, TMaskImage>::GetImageRegionSplitter() const
 {
   m_RegionSplitter->SetDirection(m_Direction);
   return m_RegionSplitter.GetPointer();
@@ -91,7 +91,7 @@ AttenuationImageFilter<TInputImage, TOutputImage, TMaskImage>::GetImageRegionSpl
 
 template <typename TInputImage, typename TOutputImage, typename TMaskImage>
 void
-AttenuationImageFilter<TInputImage, TOutputImage, TMaskImage>::VerifyPreconditions() const
+BackscatterImageFilter<TInputImage, TOutputImage, TMaskImage>::VerifyPreconditions() const
 {
   Superclass::VerifyPreconditions();
 
@@ -110,7 +110,7 @@ AttenuationImageFilter<TInputImage, TOutputImage, TMaskImage>::VerifyPreconditio
 
 template <typename TInputImage, typename TOutputImage, typename TMaskImage>
 void
-AttenuationImageFilter<TInputImage, TOutputImage, TMaskImage>::BeforeThreadedGenerateData()
+BackscatterImageFilter<TInputImage, TOutputImage, TMaskImage>::BeforeThreadedGenerateData()
 {
   Superclass::BeforeThreadedGenerateData();
 
@@ -149,7 +149,7 @@ AttenuationImageFilter<TInputImage, TOutputImage, TMaskImage>::BeforeThreadedGen
     m_DistanceWeights[i] = 1.0f - std::exp(i * i / -twoSigmaSquared);
   }
 
-  // Initialize iVars used in ComputeAttenuation()
+  // Initialize iVars used in ComputeBackscatter()
   float nyquistFrequency = m_SamplingFrequencyMHz / 2;
   float numComponents = input->GetNumberOfComponentsPerPixel();
   m_FrequencyDelta = nyquistFrequency / numComponents;
@@ -165,7 +165,7 @@ AttenuationImageFilter<TInputImage, TOutputImage, TMaskImage>::BeforeThreadedGen
 
 template <typename TInputImage, typename TOutputImage, typename TMaskImage>
 void
-AttenuationImageFilter<TInputImage, TOutputImage, TMaskImage>::ThreadedGenerateData(
+BackscatterImageFilter<TInputImage, TOutputImage, TMaskImage>::ThreadedGenerateData(
   const OutputRegionType & regionForThread,
   ThreadIdType)
 {
@@ -223,12 +223,12 @@ AttenuationImageFilter<TInputImage, TOutputImage, TMaskImage>::ThreadedGenerateD
         start[m_Direction] += m_PadLowerBounds;
         end[m_Direction] -= m_PadUpperBounds;
 
-        if (start[m_Direction] < end[m_Direction]) // We need at least a pair of pixels to estimate attenuation
+        if (start[m_Direction] < end[m_Direction]) // We need at least a pair of pixels to estimate backscatter
         {
           if (m_ComputationMode == 0)
           {
-            // Estimate attenuation for each inclusion pixel
-            // by weighted average of pair-wise attenuations for all pairs
+            // Estimate backscatter for each inclusion pixel
+            // by weighted average of pair-wise backscatter for all pairs
             while (start[m_Direction] <= end[m_Direction])
             {
               for (IndexValueType k = start[m_Direction] + 1; k <= end[m_Direction]; ++k)
@@ -237,8 +237,8 @@ AttenuationImageFilter<TInputImage, TOutputImage, TMaskImage>::ThreadedGenerateD
 
                 InputIndexType target = start;
                 target[m_Direction] = k;
-                float estimatedAttenuation = ComputeAttenuation(target, start);
-                float weight = 1.0;                      // Weight for this pair's attenuation. 1 for large distances.
+                float estimatedBackscatter = ComputeBackscatter(target, start);
+                float weight = 1.0;                      // Weight for this pair's backscatter. 1 for large distances.
                 if (pixelDistance < distanceWeightsSize) // If pixels are close, weight is lower than 1.
                 {
                   weight = m_DistanceWeights[pixelDistance];
@@ -246,11 +246,11 @@ AttenuationImageFilter<TInputImage, TOutputImage, TMaskImage>::ThreadedGenerateD
 
                 // Update this pixel
                 accumulatedWeight[start[m_Direction]] += weight;
-                output->SetPixel(start, estimatedAttenuation * weight + output->GetPixel(start));
+                output->SetPixel(start, estimatedBackscatter * weight + output->GetPixel(start));
 
                 // Update distant pair
                 accumulatedWeight[k] += weight;
-                output->SetPixel(target, estimatedAttenuation * weight + output->GetPixel(target));
+                output->SetPixel(target, estimatedBackscatter * weight + output->GetPixel(target));
               } // for k
 
               // Normalize output by accumulated weight
@@ -258,7 +258,7 @@ AttenuationImageFilter<TInputImage, TOutputImage, TMaskImage>::ThreadedGenerateD
               accumulatedWeight[start[m_Direction]] = 0.0f; // reset for next next inclusion segment
 
               // Only set mask for valid estimates
-              if (inputMaskImage != nullptr && (m_ConsiderNegativeAttenuations || output->GetPixel(start) >= 0.0))
+              if (inputMaskImage != nullptr && (m_ConsiderNegativeBackscatter || output->GetPixel(start) >= 0.0))
               {
                 // Dynamically generate the output mask with values corresponding to input
                 m_OutputMaskImage->SetPixel(start, inputMaskImage->GetPixel(start));
@@ -275,14 +275,14 @@ AttenuationImageFilter<TInputImage, TOutputImage, TMaskImage>::ThreadedGenerateD
             {
               target[m_Direction] = fixedEnd;
             }
-            float estimatedAttenuation = ComputeAttenuation(target, start);
+            float estimatedBackscatter = ComputeBackscatter(target, start);
 
-            // Record this attenuation for both pixels of the pair
-            output->SetPixel(start, estimatedAttenuation);
-            output->SetPixel(target, estimatedAttenuation);
+            // Record this backscatter for both pixels of the pair
+            output->SetPixel(start, estimatedBackscatter);
+            output->SetPixel(target, estimatedBackscatter);
 
             // Only set mask for valid estimates
-            if (inputMaskImage != nullptr && (m_ConsiderNegativeAttenuations || estimatedAttenuation >= 0.0))
+            if (inputMaskImage != nullptr && (m_ConsiderNegativeBackscatter || estimatedBackscatter >= 0.0))
             {
               m_OutputMaskImage->SetPixel(start, inputMaskImage->GetPixel(start));
               m_OutputMaskImage->SetPixel(target, inputMaskImage->GetPixel(target));
@@ -302,8 +302,8 @@ AttenuationImageFilter<TInputImage, TOutputImage, TMaskImage>::ThreadedGenerateD
 };
 
 template <typename TInputImage, typename TOutputImage, typename TMaskImage>
-typename AttenuationImageFilter<TInputImage, TOutputImage, TMaskImage>::OutputPixelType
-AttenuationImageFilter<TInputImage, TOutputImage, TMaskImage>::ComputeAttenuation(const InputIndexType & end,
+typename BackscatterImageFilter<TInputImage, TOutputImage, TMaskImage>::OutputPixelType
+BackscatterImageFilter<TInputImage, TOutputImage, TMaskImage>::ComputeBackscatter(const InputIndexType & end,
                                                                                   const InputIndexType & start) const
 {
   // Get RF spectra frequency bins at start and end pixel positions
@@ -326,7 +326,7 @@ AttenuationImageFilter<TInputImage, TOutputImage, TMaskImage>::ComputeAttenuatio
 
   // from https://eigen.tuxfamily.org/dox/group__LeastSquares.html
   Eigen::Matrix<float, 1, 2> lineFit = A.householderQr().solve(b);
-  float                      frequencySlope = -lineFit(1); // we expect attenuation to increase with frequency
+  float                      frequencySlope = -lineFit(1); // we expect backscatter to increase with frequency
 
   // https://www.electronics-notes.com/articles/basic_concepts/decibel/neper-to-db-conversion.php
   // Neper to dB conversion: 1Np = 20 log10e dB, approximately 1Np = 8.6858896 dB
@@ -337,7 +337,7 @@ AttenuationImageFilter<TInputImage, TOutputImage, TMaskImage>::ComputeAttenuatio
 
 template <typename TInputImage, typename TOutputImage, typename TMaskImage>
 float
-AttenuationImageFilter<TInputImage, TOutputImage, TMaskImage>::TransformPhysicalToPixelScanLineDistance(
+BackscatterImageFilter<TInputImage, TOutputImage, TMaskImage>::TransformPhysicalToPixelScanLineDistance(
   float distanceMM) const
 {
   if (distanceMM < 0)
@@ -358,7 +358,7 @@ AttenuationImageFilter<TInputImage, TOutputImage, TMaskImage>::TransformPhysical
 
 template <typename TInputImage, typename TOutputImage, typename TMaskImage>
 float
-AttenuationImageFilter<TInputImage, TOutputImage, TMaskImage>::TransformPixelToPhysicalScanLineDistance(
+BackscatterImageFilter<TInputImage, TOutputImage, TMaskImage>::TransformPixelToPhysicalScanLineDistance(
   unsigned int distance) const
 {
   auto input = this->GetInput();
@@ -373,7 +373,7 @@ AttenuationImageFilter<TInputImage, TOutputImage, TMaskImage>::TransformPixelToP
 
 template <typename TInputImage, typename TOutputImage, typename TMaskImage>
 bool
-AttenuationImageFilter<TInputImage, TOutputImage, TMaskImage>::ThreadedIsIncluded(InputIndexType index) const
+BackscatterImageFilter<TInputImage, TOutputImage, TMaskImage>::ThreadedIsIncluded(InputIndexType index) const
 {
   if (m_ThreadedInputMaskImage == nullptr)
   {
@@ -385,7 +385,7 @@ AttenuationImageFilter<TInputImage, TOutputImage, TMaskImage>::ThreadedIsInclude
 
 template <typename TInputImage, typename TOutputImage, typename TMaskImage>
 void
-AttenuationImageFilter<TInputImage, TOutputImage, TMaskImage>::PrintSelf(std::ostream & os, Indent indent) const
+BackscatterImageFilter<TInputImage, TOutputImage, TMaskImage>::PrintSelf(std::ostream & os, Indent indent) const
 {
   Superclass::PrintSelf(os, indent);
 
@@ -394,7 +394,7 @@ AttenuationImageFilter<TInputImage, TOutputImage, TMaskImage>::PrintSelf(std::os
   os << indent << "Sampling frequency (MHz): " << this->GetSamplingFrequencyMHz() << std::endl;
   os << indent << "Frequency band: [" << this->GetFrequencyBandStartMHz() << "," << this->GetFrequencyBandEndMHz()
      << "]" << std::endl;
-  os << indent << "Consider negative attenuations: " << (this->GetConsiderNegativeAttenuations() ? "Yes" : "No")
+  os << indent << "Consider negative backscatter: " << (this->GetConsiderNegativeBackscatter() ? "Yes" : "No")
      << std::endl;
   os << indent << "Fixed estimation distance: " << this->GetFixedEstimationDepthMM()
      << "mm == " << this->GetFixedEstimationDepth() << "px" << std::endl;
@@ -403,4 +403,4 @@ AttenuationImageFilter<TInputImage, TOutputImage, TMaskImage>::PrintSelf(std::os
      << "mm == " << this->GetPadUpperBounds() << " px" << std::endl;
 }
 } // end namespace itk
-#endif // itkAttenuationImageFilter_hxx
+#endif // itkBackscatterImageFilter_hxx
