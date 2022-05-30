@@ -52,8 +52,6 @@ BackscatterImageFilter<TInputImage, TOutputImage>::VerifyPreconditions() const
 {
   Superclass::VerifyPreconditions();
 
-  m_ThreadedInputMaskImage = this->GetInputMaskImage();
-
   if (this->GetDirection() >= ImageDimension)
   {
     itkExceptionMacro("Scan line direction must be a valid image dimension!");
@@ -77,7 +75,7 @@ BackscatterImageFilter<TInputImage, TOutputImage>::BeforeThreadedGenerateData()
 
   // Initialize iVars used in ComputeBackscatter()
   float nyquistFrequency = m_SamplingFrequencyMHz / 2;
-  float numComponents = input->GetNumberOfComponentsPerPixel();
+  float numComponents = this->GetInput()->GetNumberOfComponentsPerPixel();
   m_FrequencyDelta = nyquistFrequency / numComponents;
   m_StartComponent = m_FrequencyBandStartMHz / m_FrequencyDelta;
   m_EndComponent = m_FrequencyBandEndMHz / m_FrequencyDelta;
@@ -116,9 +114,7 @@ BackscatterImageFilter<TInputImage, TOutputImage>::ThreadedGenerateData(
 
       OutputPixelType estimatedBackscatter = ComputeBackscatter(index);
 
-      // Record this backscatter for both pixels of the pair
-      output->SetPixel(start, estimatedBackscatter);
-      output->SetPixel(target, estimatedBackscatter);
+      output->SetPixel(index, estimatedBackscatter);
       ++it;
     }
     it.NextLine();
@@ -129,7 +125,7 @@ template <typename TInputImage, typename TOutputImage>
 typename BackscatterImageFilter<TInputImage, TOutputImage>::OutputPixelType
 BackscatterImageFilter<TInputImage, TOutputImage>::ComputeBackscatter(const InputIndexType & index) const
 {
-  using ScalarType = typename OutputPixelType::ValueType;
+  using ScalarType = typename NumericTraits<OutputPixelType>::ValueType;
 
   // Get RF spectra frequency bins at start and end pixel positions
   auto           input = this->GetInput();
@@ -151,7 +147,10 @@ BackscatterImageFilter<TInputImage, TOutputImage>::ComputeBackscatter(const Inpu
   ScalarType                 frequencySlope = -lineFit(1);
   ScalarType                 frequencyIntercept = lineFit(0);
 
-  OutputPixelType result{ sum / m_ConsideredComponents, frequencySlope, frequencyIntercept };
+  OutputPixelType result = NumericTraits<OutputPixelType>::Zero;
+  result[0] = sum / m_ConsideredComponents;
+  result[1] = frequencySlope;
+  result[2] = frequencyIntercept;
 
   return result;
 }

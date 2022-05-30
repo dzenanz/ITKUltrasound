@@ -23,6 +23,7 @@
 #include "itkTestingMacros.h"
 
 #include "itkBackscatterImageFilter.h"
+#include "itkImageToHistogramFilter.h"
 
 int
 itkBackscatterImageFilterTest(int argc, char * argv[])
@@ -36,10 +37,11 @@ itkBackscatterImageFilterTest(int argc, char * argv[])
   }
 
   using RealType = float;
+  using RGBtype = itk::RGBPixel<RealType>;
   const unsigned int Dimension = 3;
 
   using SpectraImageType = itk::VectorImage<RealType, Dimension>;
-  using OutputImageType = itk::Image<RealType, Dimension>;
+  using OutputImageType = itk::Image<RGBtype, Dimension>;
 
   SpectraImageType::Pointer inputImage = itk::ReadImage<SpectraImageType>(std::string(argv[1]));
 
@@ -48,7 +50,7 @@ itkBackscatterImageFilterTest(int argc, char * argv[])
   unsigned int numWorkUnits = (argc > 3 ? std::stoi(argv[3]) : 1);
 
   // Initialize the filter
-  using BackscatterFilterType = itk::BackscatterImageFilter<SpectraImageType, OutputImageType, MaskImageType>;
+  using BackscatterFilterType = itk::BackscatterImageFilter<SpectraImageType, OutputImageType>;
   BackscatterFilterType::Pointer backscatterFilter = BackscatterFilterType::New();
 
   backscatterFilter->SetInput(inputImage);
@@ -77,43 +79,9 @@ itkBackscatterImageFilterTest(int argc, char * argv[])
 
   ITK_EXERCISE_BASIC_OBJECT_METHODS(backscatterFilter, BackscatterImageFilter, ImageToImageFilter);
 
-  // Run
   ITK_TRY_EXPECT_NO_EXCEPTION(backscatterFilter->Update());
 
-  // Verify output
   itk::WriteImage(backscatterFilter->GetOutput(), outputImagePath, false);
-
-  // Now boil it down to a single backscatter value
-  using HistogramFilterType = itk::Statistics::ImageToHistogramFilter<OutputImageType>;
-  auto histogramFilter = HistogramFilterType::New();
-  histogramFilter->SetInput(backscatterFilter->GetOutput());
-  histogramFilter->SetMarginalScale(10);
-
-  HistogramFilterType::HistogramSizeType histogramSize{ 1 };
-  histogramSize[0] = 1e5;
-  histogramFilter->SetHistogramSize(histogramSize);
-  histogramFilter->Update();
-  auto histogram = histogramFilter->GetOutput();
-
-  // We will use median as a robust estimate of the mean
-  float median = histogram->Quantile(0, 0.50);
-  std::cout << "Median backscatter: " << median << " dB/(MHz*cm)" << std::endl;
-
-  if (!std::isfinite(median))
-  {
-    std::cerr << "The median backscatter if not a finite number! It is: " << median << std::endl;
-    return EXIT_FAILURE;
-  }
-
-  if (argc > 9) // Expected value is provided on the command line
-  {
-    float expectedBackscatter = std::stof(argv[9]);
-    if (!itk::Math::FloatAlmostEqual(expectedBackscatter, median, 4, 1e-4))
-    {
-      std::cerr << "Regression test failure: the expected backscatter is: " << expectedBackscatter << std::endl;
-      return EXIT_FAILURE;
-    }
-  }
 
   return EXIT_SUCCESS;
 }

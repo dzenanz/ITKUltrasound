@@ -3,6 +3,7 @@ itk_module_test()
 set(UltrasoundTests
   itkAnalyticSignalImageFilterTest.cxx
   itkAttenuationImageFilterTest.cxx
+  itkBackscatterImageFilterTest.cxx
   itkBModeImageFilterTestTiming.cxx
   itkCurvilinearArraySpecialCoordinatesImageTest.cxx
   itkCurvilinearArrayUltrasoundImageFileReaderTest.cxx
@@ -166,6 +167,17 @@ itk_add_test(NAME itkAttenuationImageFilterWholeImageTest
     1   # consider negative attenuations
     0   # computation mode
     0.458781 # median attenuation
+  )
+itk_add_test(NAME itkBackscatterImageFilterTest
+  COMMAND UltrasoundTestDriver
+  --compare
+    DATA{Baseline/itkBackscatterImageFilterTestOutput.mha}
+    ${ITK_TEST_OUTPUT_DIR}/itkBackscatterImageFilterTestOutput.mha
+  itkBackscatterImageFilterTest
+    DATA{Input/UnfusedRF-a0-spectra-cropped.mhd,UnfusedRF-a0-spectra-cropped.raw}
+    ${ITK_TEST_OUTPUT_DIR}/itkBackscatterImageFilterTestOutput.mha
+    100 # work units
+    0.458781 # median backscatter
   )
 itk_add_test(NAME itkBModeImageFilterTestTiming
   COMMAND UltrasoundTestDriver
