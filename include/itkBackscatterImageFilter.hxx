@@ -27,71 +27,28 @@
 #include "itkImageLinearConstIteratorWithIndex.h"
 #include "itkImageSink.h"
 #include "itkImageRegionSplitterDirection.h"
-#include "itkSimpleDataObjectDecorator.h"
 
 namespace itk
 {
 
-template <typename TInputImage, typename TOutputImage, typename TMaskImage>
-BackscatterImageFilter<TInputImage, TOutputImage, TMaskImage>::BackscatterImageFilter()
+template <typename TInputImage, typename TOutputImage>
+BackscatterImageFilter<TInputImage, TOutputImage>::BackscatterImageFilter()
 {
   this->SetNumberOfRequiredInputs(1);
   this->DynamicMultiThreadingOff();
 }
 
-template <typename TInputImage, typename TOutputImage, typename TMaskImage>
-void
-BackscatterImageFilter<TInputImage, TOutputImage, TMaskImage>::SetFixedEstimationDepthMM(const float distanceMM)
-{
-  this->SetFixedEstimationDepth(TransformPhysicalToPixelScanLineDistance(distanceMM));
-}
-
-template <typename TInputImage, typename TOutputImage, typename TMaskImage>
-float
-BackscatterImageFilter<TInputImage, TOutputImage, TMaskImage>::GetFixedEstimationDepthMM() const
-{
-  return this->TransformPixelToPhysicalScanLineDistance(this->GetFixedEstimationDepth());
-}
-
-template <typename TInputImage, typename TOutputImage, typename TMaskImage>
-void
-BackscatterImageFilter<TInputImage, TOutputImage, TMaskImage>::SetPadUpperBoundsMM(const float distanceMM)
-{
-  this->SetPadUpperBounds(TransformPhysicalToPixelScanLineDistance(distanceMM));
-}
-
-template <typename TInputImage, typename TOutputImage, typename TMaskImage>
-float
-BackscatterImageFilter<TInputImage, TOutputImage, TMaskImage>::GetPadUpperBoundsMM() const
-{
-  return this->TransformPixelToPhysicalScanLineDistance(this->GetPadUpperBounds());
-}
-
-template <typename TInputImage, typename TOutputImage, typename TMaskImage>
-void
-BackscatterImageFilter<TInputImage, TOutputImage, TMaskImage>::SetPadLowerBoundsMM(const float distanceMM)
-{
-  this->SetPadLowerBounds(TransformPhysicalToPixelScanLineDistance(distanceMM));
-}
-
-template <typename TInputImage, typename TOutputImage, typename TMaskImage>
-float
-BackscatterImageFilter<TInputImage, TOutputImage, TMaskImage>::GetPadLowerBoundsMM() const
-{
-  return this->TransformPixelToPhysicalScanLineDistance(this->GetPadLowerBounds());
-}
-
-template <typename TInputImage, typename TOutputImage, typename TMaskImage>
+template <typename TInputImage, typename TOutputImage>
 const ImageRegionSplitterBase *
-BackscatterImageFilter<TInputImage, TOutputImage, TMaskImage>::GetImageRegionSplitter() const
+BackscatterImageFilter<TInputImage, TOutputImage>::GetImageRegionSplitter() const
 {
   m_RegionSplitter->SetDirection(m_Direction);
   return m_RegionSplitter.GetPointer();
 }
 
-template <typename TInputImage, typename TOutputImage, typename TMaskImage>
+template <typename TInputImage, typename TOutputImage>
 void
-BackscatterImageFilter<TInputImage, TOutputImage, TMaskImage>::VerifyPreconditions() const
+BackscatterImageFilter<TInputImage, TOutputImage>::VerifyPreconditions() const
 {
   Superclass::VerifyPreconditions();
 
@@ -108,46 +65,15 @@ BackscatterImageFilter<TInputImage, TOutputImage, TMaskImage>::VerifyPreconditio
   }
 }
 
-template <typename TInputImage, typename TOutputImage, typename TMaskImage>
+template <typename TInputImage, typename TOutputImage>
 void
-BackscatterImageFilter<TInputImage, TOutputImage, TMaskImage>::BeforeThreadedGenerateData()
+BackscatterImageFilter<TInputImage, TOutputImage>::BeforeThreadedGenerateData()
 {
   Superclass::BeforeThreadedGenerateData();
 
   // Initialize metric image
   this->GetOutput()->Allocate();
   this->GetOutput()->FillBuffer(0.0f);
-
-  // Initialize output mask image
-  const InputImageType * input = this->GetInput();
-  const MaskImageType *  inputMaskImage = this->GetInputMaskImage();
-
-  auto region = input->GetLargestPossibleRegion();
-  if (inputMaskImage != nullptr)
-  {
-    m_OutputMaskImage->CopyInformation(inputMaskImage);
-    region = inputMaskImage->GetLargestPossibleRegion();
-    m_OutputMaskImage->SetRegions(region);
-    m_OutputMaskImage->Allocate();
-    m_OutputMaskImage->FillBuffer(0);
-  }
-  else
-  {
-    m_OutputMaskImage->CopyInformation(input);
-    m_OutputMaskImage->SetRegions(region);
-    m_OutputMaskImage->Allocate();
-    m_OutputMaskImage->FillBuffer(1);
-  }
-  m_LastScanlineIndex = region.GetIndex(m_Direction) + region.GetSize(m_Direction) - 1;
-
-  // Initialize distance weights
-  unsigned fourSigma = std::max(m_FixedEstimationDepth, 16u); // An arbitrary default.
-  m_DistanceWeights.resize(fourSigma);
-  float twoSigmaSquared = fourSigma * fourSigma / 8.0f;
-  for (unsigned i = 0; i < fourSigma; ++i)
-  {
-    m_DistanceWeights[i] = 1.0f - std::exp(i * i / -twoSigmaSquared);
-  }
 
   // Initialize iVars used in ComputeBackscatter()
   float nyquistFrequency = m_SamplingFrequencyMHz / 2;
@@ -160,12 +86,11 @@ BackscatterImageFilter<TInputImage, TOutputImage, TMaskImage>::BeforeThreadedGen
     m_EndComponent = numComponents - 1; // Use all components
   }
   m_ConsideredComponents = m_EndComponent - m_StartComponent + 1;
-  m_ScanStepMM = input->GetSpacing()[m_Direction];
 }
 
-template <typename TInputImage, typename TOutputImage, typename TMaskImage>
+template <typename TInputImage, typename TOutputImage>
 void
-BackscatterImageFilter<TInputImage, TOutputImage, TMaskImage>::ThreadedGenerateData(
+BackscatterImageFilter<TInputImage, TOutputImage>::ThreadedGenerateData(
   const OutputRegionType & regionForThread,
   ThreadIdType)
 {
@@ -176,231 +101,71 @@ BackscatterImageFilter<TInputImage, TOutputImage, TMaskImage>::ThreadedGenerateD
 
   const InputImageType * input = this->GetInput();
   OutputImageType *      output = this->GetOutput();
-  const MaskImageType *  inputMaskImage = this->GetInputMaskImage();
 
   ImageLinearConstIteratorWithIndex<TInputImage> it(input, regionForThread);
   it.SetDirection(m_Direction);
   it.GoToBegin();
 
-  unsigned int   inclusionLength;
-  InputIndexType start, end;
-
-  thread_local std::vector<float> accumulatedWeight;
-  accumulatedWeight.resize(regionForThread.GetSize(m_Direction));
-
-  // make sure this is not recomputed in the inner loop
-  const unsigned distanceWeightsSize = m_DistanceWeights.size();
-
   // do the work
   while (!it.IsAtEnd())
   {
-    start = it.GetIndex();
-    inclusionLength = 0;
     while (!it.IsAtEndOfLine())
     {
       // Advance until an inclusion is found
       InputIndexType index = it.GetIndex();
-      bool           inside = ThreadedIsIncluded(index);
-      if (inside && index[m_Direction] < m_LastScanlineIndex)
-      {
-        if (inclusionLength == 0)
-        {
-          start = it.GetIndex(); // Mark the start
-        }
-        ++inclusionLength;
-      }
-      else if (inclusionLength > 0) // End of a segment
-      {
-        inclusionLength = 0; // Prepare for the next one
 
-        end = index;
-        if (index[m_Direction] < m_LastScanlineIndex)
-        {
-          end[m_Direction] -= 1; // Stay at last pixel in the inclusion
-        }
+      OutputPixelType estimatedBackscatter = ComputeBackscatter(index);
 
-        // Adjust for pixel padding
-        start[m_Direction] += m_PadLowerBounds;
-        end[m_Direction] -= m_PadUpperBounds;
-
-        if (start[m_Direction] < end[m_Direction]) // We need at least a pair of pixels to estimate backscatter
-        {
-          if (m_ComputationMode == 0)
-          {
-            // Estimate backscatter for each inclusion pixel
-            // by weighted average of pair-wise backscatter for all pairs
-            while (start[m_Direction] <= end[m_Direction])
-            {
-              for (IndexValueType k = start[m_Direction] + 1; k <= end[m_Direction]; ++k)
-              {
-                unsigned pixelDistance = k - start[m_Direction];
-
-                InputIndexType target = start;
-                target[m_Direction] = k;
-                float estimatedBackscatter = ComputeBackscatter(target, start);
-                float weight = 1.0;                      // Weight for this pair's backscatter. 1 for large distances.
-                if (pixelDistance < distanceWeightsSize) // If pixels are close, weight is lower than 1.
-                {
-                  weight = m_DistanceWeights[pixelDistance];
-                }
-
-                // Update this pixel
-                accumulatedWeight[start[m_Direction]] += weight;
-                output->SetPixel(start, estimatedBackscatter * weight + output->GetPixel(start));
-
-                // Update distant pair
-                accumulatedWeight[k] += weight;
-                output->SetPixel(target, estimatedBackscatter * weight + output->GetPixel(target));
-              } // for k
-
-              // Normalize output by accumulated weight
-              output->SetPixel(start, output->GetPixel(start) / accumulatedWeight[start[m_Direction]]);
-              accumulatedWeight[start[m_Direction]] = 0.0f; // reset for next next inclusion segment
-
-              // Only set mask for valid estimates
-              if (inputMaskImage != nullptr && (m_ConsiderNegativeBackscatter || output->GetPixel(start) >= 0.0))
-              {
-                // Dynamically generate the output mask with values corresponding to input
-                m_OutputMaskImage->SetPixel(start, inputMaskImage->GetPixel(start));
-              }
-
-              ++start[m_Direction];
-            } // while start<=end
-          }
-          else if (m_ComputationMode == 1 || m_ComputationMode == 2)
-          {
-            InputIndexType target = end;
-            IndexValueType fixedEnd = start[m_Direction] + m_FixedEstimationDepth;
-            if (m_ComputationMode == 2 && fixedEnd < end[m_Direction])
-            {
-              target[m_Direction] = fixedEnd;
-            }
-            float estimatedBackscatter = ComputeBackscatter(target, start);
-
-            // Record this backscatter for both pixels of the pair
-            output->SetPixel(start, estimatedBackscatter);
-            output->SetPixel(target, estimatedBackscatter);
-
-            // Only set mask for valid estimates
-            if (inputMaskImage != nullptr && (m_ConsiderNegativeBackscatter || estimatedBackscatter >= 0.0))
-            {
-              m_OutputMaskImage->SetPixel(start, inputMaskImage->GetPixel(start));
-              m_OutputMaskImage->SetPixel(target, inputMaskImage->GetPixel(target));
-            }
-          }
-          else
-          {
-            itkExceptionMacro(<< "Invalid computation mode: " << m_ComputationMode);
-          }
-        } // if start<end
-      }   // else !inside
-
+      // Record this backscatter for both pixels of the pair
+      output->SetPixel(start, estimatedBackscatter);
+      output->SetPixel(target, estimatedBackscatter);
       ++it;
     }
     it.NextLine();
   }
 };
 
-template <typename TInputImage, typename TOutputImage, typename TMaskImage>
-typename BackscatterImageFilter<TInputImage, TOutputImage, TMaskImage>::OutputPixelType
-BackscatterImageFilter<TInputImage, TOutputImage, TMaskImage>::ComputeBackscatter(const InputIndexType & end,
-                                                                                  const InputIndexType & start) const
+template <typename TInputImage, typename TOutputImage>
+typename BackscatterImageFilter<TInputImage, TOutputImage>::OutputPixelType
+BackscatterImageFilter<TInputImage, TOutputImage>::ComputeBackscatter(const InputIndexType & index) const
 {
+  using ScalarType = typename OutputPixelType::ValueType;
+
   // Get RF spectra frequency bins at start and end pixel positions
   auto           input = this->GetInput();
-  InputPixelType endSample = input->GetPixel(end);
-  InputPixelType startSample = input->GetPixel(start);
-
-  // Get distance between start and end pixel positions (assume mm units)
-  const unsigned int pixelDistance = end[m_Direction] - start[m_Direction];
-  float              distanceMM = pixelDistance * m_ScanStepMM;
+  InputPixelType sample = input->GetPixel(index);
+  ScalarType     sum = 0;
 
   Eigen::Matrix<float, Eigen::Dynamic, 2> A(m_ConsideredComponents, 2);
   Eigen::Matrix<float, Eigen::Dynamic, 1> b(m_ConsideredComponents);
   for (unsigned i = 0; i < m_ConsideredComponents; i++)
   {
     A(i, 0) = 1;
-    A(i, 1) = (1 + i + m_StartComponent) * m_FrequencyDelta;                                       // x_i = frequency
-    b(i) = endSample[i + m_StartComponent] / (startSample[i + m_StartComponent] + itk::Math::eps); // y_i = ratio
+    A(i, 1) = (1 + i + m_StartComponent) * m_FrequencyDelta; // x_i = frequency
+    b(i) = sample[i + m_StartComponent];                     // y_i = intensity
+    sum += sample[i + m_StartComponent];
   }
 
   // from https://eigen.tuxfamily.org/dox/group__LeastSquares.html
   Eigen::Matrix<float, 1, 2> lineFit = A.householderQr().solve(b);
-  float                      frequencySlope = -lineFit(1); // we expect backscatter to increase with frequency
+  ScalarType                 frequencySlope = -lineFit(1);
+  ScalarType                 frequencyIntercept = lineFit(0);
 
-  // https://www.electronics-notes.com/articles/basic_concepts/decibel/neper-to-db-conversion.php
-  // Neper to dB conversion: 1Np = 20 log10e dB, approximately 1Np = 8.6858896 dB
-  float neper = 20 * itk::Math::log10e;
+  OutputPixelType result{ sum / m_ConsideredComponents, frequencySlope, frequencyIntercept };
 
-  return 10 * neper * frequencySlope / distanceMM; // 10 converts mm into cm
+  return result;
 }
 
-template <typename TInputImage, typename TOutputImage, typename TMaskImage>
-float
-BackscatterImageFilter<TInputImage, TOutputImage, TMaskImage>::TransformPhysicalToPixelScanLineDistance(
-  float distanceMM) const
-{
-  if (distanceMM < 0)
-  {
-    itkExceptionMacro("Expected nonnegative spatial distance!");
-  }
-
-  auto input = this->GetInput();
-  if (input == nullptr)
-  {
-    itkExceptionMacro("Tried to translate spatial distance to pixel distance without reference input image!");
-  }
-
-  const float scanStepMM = input->GetSpacing()[m_Direction];
-  float       distanceInPixels = distanceMM / scanStepMM;
-  return static_cast<unsigned int>(std::round(distanceInPixels));
-}
-
-template <typename TInputImage, typename TOutputImage, typename TMaskImage>
-float
-BackscatterImageFilter<TInputImage, TOutputImage, TMaskImage>::TransformPixelToPhysicalScanLineDistance(
-  unsigned int distance) const
-{
-  auto input = this->GetInput();
-  if (input == nullptr)
-  {
-    itkExceptionMacro("Tried to translate spatial distance to pixel distance without reference input image!");
-  }
-
-  const float scanStepMM = input->GetSpacing()[m_Direction];
-  return scanStepMM * distance;
-}
-
-template <typename TInputImage, typename TOutputImage, typename TMaskImage>
-bool
-BackscatterImageFilter<TInputImage, TOutputImage, TMaskImage>::ThreadedIsIncluded(InputIndexType index) const
-{
-  if (m_ThreadedInputMaskImage == nullptr)
-  {
-    return true;
-  }
-  auto maskValue = m_ThreadedInputMaskImage->GetPixel(index);
-  return (m_LabelValue == 0 && maskValue > 0) || (m_LabelValue > 0 && maskValue == m_LabelValue);
-}
-
-template <typename TInputImage, typename TOutputImage, typename TMaskImage>
+template <typename TInputImage, typename TOutputImage>
 void
-BackscatterImageFilter<TInputImage, TOutputImage, TMaskImage>::PrintSelf(std::ostream & os, Indent indent) const
+BackscatterImageFilter<TInputImage, TOutputImage>::PrintSelf(std::ostream & os, Indent indent) const
 {
   Superclass::PrintSelf(os, indent);
 
   os << indent << "Image axis representing RF scanline: " << this->GetDirection() << std::endl;
-  os << indent << "Label value: " << static_cast<unsigned int>(this->GetLabelValue()) << std::endl;
   os << indent << "Sampling frequency (MHz): " << this->GetSamplingFrequencyMHz() << std::endl;
   os << indent << "Frequency band: [" << this->GetFrequencyBandStartMHz() << "," << this->GetFrequencyBandEndMHz()
      << "]" << std::endl;
-  os << indent << "Consider negative backscatter: " << (this->GetConsiderNegativeBackscatter() ? "Yes" : "No")
-     << std::endl;
-  os << indent << "Fixed estimation distance: " << this->GetFixedEstimationDepthMM()
-     << "mm == " << this->GetFixedEstimationDepth() << "px" << std::endl;
-  os << indent << "Inclusion padding on scanline: Lower: " << this->GetPadLowerBoundsMM()
-     << "mm == " << this->GetPadLowerBounds() << "px ; Upper: " << this->GetPadUpperBoundsMM()
-     << "mm == " << this->GetPadUpperBounds() << " px" << std::endl;
 }
 } // end namespace itk
 #endif // itkBackscatterImageFilter_hxx

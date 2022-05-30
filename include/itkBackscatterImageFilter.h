@@ -24,19 +24,14 @@
 #include "itkImageToImageFilter.h"
 #include "itkImageRegionSplitterDirection.h"
 #include "itkMacro.h"
-
+#include "itkRGBPixel.h"
 #include "itkNumericTraits.h"
+#include "itkNumericTraitsRGBPixel.h"
 
 namespace itk
 {
 /** \class BackscatterImageFilter
- * \brief Computes the estimated backscatter in dB/(MHz*cm)
- *
- * Backscatter is a measure of how an RF signal fades in strength
- * as it passes through a physical region. In ultrasound analysis
- * signal backscatter tends to be roughly similar over areas
- * of similar material composition, such as different types of
- * tissue within an image.
+ * \brief Computes the estimated backscatter coefficient
  *
  * BackscatterImageFilter receives an input vector image representing
  * RF spectra. One image direction represents the direction of an
@@ -46,19 +41,10 @@ namespace itk
  * time as multiple samples are captured in a sweep with the probe.
  * Each pixel in the input image is a vector representing frequency
  * components at bins based on the sampling frequency.
- * The filter also receives a mandatory mask input indicating the
- * region over which backscatter should be estimated.
  *
- * BackscatterImageFilter generates a scalar output image with
- * pixel intensities representing backscatter estimates.
- * Estimates are made in continuous segments of the mask region
- * along the RF sampling direction.
+ * BackscatterImageFilter generates an RGB output image with
+ * RGB channel intensities representing different backscatter estimates.
  *
- * There are three modes of computation, see documentation for
- * ComputationMode for detailed description.
- * Pixels outside of the mask after padding erosion will have a value of zero.
- * Pixels inside the mask for which the backscatter has not been computed
- * will also have a value of zero.
  *
  * \sa MaskedImageToHistogramFilter
  * \sa Spectra1DImageFilter
@@ -69,8 +55,7 @@ namespace itk
  * \ingroup Ultrasound
  */
 template <typename TInputImage,
-          typename TOutputImage = itk::Image<float, TInputImage::ImageDimension>,
-          typename TMaskImage = itk::Image<unsigned char, TInputImage::ImageDimension>>
+          typename TOutputImage = Image<RGBPixel<float>, TInputImage::ImageDimension>>
 class ITK_TEMPLATE_EXPORT BackscatterImageFilter : public ImageToImageFilter<TInputImage, TOutputImage>
 {
 public:
@@ -97,10 +82,6 @@ public:
   using OutputImageType = TOutputImage;
   using OutputImagePointer = typename TOutputImage::Pointer;
 
-  using MaskImageType = TMaskImage;
-  using MaskImagePointer = typename TMaskImage::Pointer;
-  using MaskPixelType = typename TMaskImage::PixelType;
-
   using InputRegionType = typename TInputImage::RegionType;
   using InputSizeType = typename TInputImage::SizeType;
   using InputIndexType = typename TInputImage::IndexType;
@@ -108,50 +89,6 @@ public:
 
   using OutputRegionType = typename TOutputImage::RegionType;
   using OutputPixelType = typename TOutputImage::PixelType;
-
-  /** Input mask image represents input region for analysis */
-  itkSetInputMacro(InputMaskImage, TMaskImage);
-  itkGetInputMacro(InputMaskImage, TMaskImage);
-
-  /** Output mask image represents output region for analysis
-   *  after padding is applied */
-  itkGetConstMacro(OutputMaskImage, TMaskImage *);
-
-  /** Mode of computation (0=all pairs, 1=first and last, 2=fixed distance).
-   *
-   * 0. (Default) Between all pixel pairs in a segment, producing a weighted
-   *    estimate for each pixel. More distant pixel pairs have higher weights.
-   *    This decreases influence of numerical instability.
-   * 1. Between first and last pixel in a segment.
-   * 2. Between first pixel in a segment, and
-   *    a pixel at a fixed distance away from it.
-   *    This distance is controlled by FixedEstimationDepth parameter.
-   *
-   * Modes 1 and 2 produce an estimate for the midpoint pixel only.
-   */
-  itkSetMacro(ComputationMode, unsigned int);
-  itkGetConstMacro(ComputationMode, unsigned int);
-
-  /** Label value indicating which mask pixel values should be included in analysis.
-   *  A value of zero indicates that any nonzero pixel should be included.
-   */
-  itkSetMacro(LabelValue, MaskPixelType);
-  itkGetConstMacro(LabelValue, MaskPixelType);
-
-  /** Fix the pixel distance between voxels for estimating
-   *  backscatter in a scan line.
-   *  If set to zero then the last continuous pixel
-   *  in the inclusion will always be chosen as the
-   *  second pixel for backscatter calculation. */
-  itkSetMacro(FixedEstimationDepth, unsigned int);
-  itkGetConstMacro(FixedEstimationDepth, unsigned int);
-
-  /** Set/get fixed estimation depth in physical space.
-   *  Assumes input image spacing is in millimenters. */
-  void
-  SetFixedEstimationDepthMM(const float distanceMM);
-  float
-  GetFixedEstimationDepthMM() const;
 
   /** RF scanline direction */
   itkSetMacro(Direction, unsigned int);
@@ -168,39 +105,6 @@ public:
   /* High end of RF frequency band. Must be a positive value.*/
   itkSetMacro(FrequencyBandEndMHz, float);
   itkGetConstMacro(FrequencyBandEndMHz, float);
-
-  /** Optionally discard negative backscatter estimates
-   *  so that they are not considered in statistic computations.
-   *  Negative backscatter implies that a signal strengthened
-   *  while passing through tissue and may result from
-   *  sampling error or external interference. */
-  itkSetMacro(ConsiderNegativeBackscatter, bool);
-  itkGetConstMacro(ConsiderNegativeBackscatter, bool);
-
-  /** Skip backscatter estimation for a fixed number
-   *  of pixels at the start of an inclusion region.
-   *  Applied before spatial padding.
-   *  Can help with uncertainty at borders of mask.
-   */
-  itkSetMacro(PadUpperBounds, unsigned int);
-  itkGetConstMacro(PadUpperBounds, unsigned int);
-  /** Skip backscatter estimation at the end of an inclusion region. */
-  itkSetMacro(PadLowerBounds, unsigned int);
-  itkGetConstMacro(PadLowerBounds, unsigned int);
-
-  /** Set padding at start of inclusion region based on
-   *  physical distance. Assumes input image is in millimeters. */
-  void
-  SetPadLowerBoundsMM(const float distanceMM);
-  float
-  GetPadLowerBoundsMM() const;
-
-  /** Set padding at end of inclusion region based on
-   *  physical distance. Assumes input image is in millimeters. */
-  void
-  SetPadUpperBoundsMM(const float distanceMM);
-  float
-  GetPadUpperBoundsMM() const;
 
   // Alias for setting direction of RF waveform in data collection
   void
@@ -237,36 +141,11 @@ protected:
   /** Compute backscatter between two pixels in the RF spectra vector image.
    *  Assumes that image spacing is in MM. */
   OutputPixelType
-  ComputeBackscatter(const InputIndexType & end, const InputIndexType & start) const;
-
-  /** Transform spatial distance along an RF scan line to continuous pixel distance
-   *  in the input image.
-   *  Assumes input distance and image spacing are in millimeters.
-   *  Rounded to nearest integer. */
-  float
-  TransformPhysicalToPixelScanLineDistance(float distanceMM) const;
-
-  /** Transform pixel distance along an RF scan line to spatial distance
-   *  in the input image.
-   *  Assumes input image spacing is in millimeters. Output is in millimeters. */
-  float
-  TransformPixelToPhysicalScanLineDistance(unsigned int distance) const;
-
-  /** Check whether given pixel index is included in the mask */
-  bool
-  ThreadedIsIncluded(InputIndexType index) const;
+  ComputeBackscatter(const InputIndexType & index) const;
 
 private:
-  unsigned int  m_ComputationMode = 0;
-  MaskPixelType m_LabelValue = 0;
   unsigned int  m_Direction = 0;
-  unsigned int  m_FixedEstimationDepth = 0;
-  unsigned int  m_PadUpperBounds = 0;
-  unsigned int  m_PadLowerBounds = 0;
 
-  std::vector<float> m_DistanceWeights;
-
-  float m_ScanStepMM = 1.0f;
   float m_SamplingFrequencyMHz = 0.0f;
   float m_FrequencyBandStartMHz = 0.0f;
   float m_FrequencyBandEndMHz = 0.0f;
@@ -277,19 +156,8 @@ private:
   unsigned int m_EndComponent = 0;
   unsigned int m_ConsideredComponents = 1;
 
-  bool m_ConsiderNegativeBackscatter = false;
-
   /** Region splitter to ensure scanline is intact in threaded regions */
   ImageRegionSplitterDirection::Pointer m_RegionSplitter = ImageRegionSplitterDirection::New();
-
-  /** Cache mask image reference before threaded execution to reduce calls to GetMaskImage() */
-  mutable const MaskImageType * m_ThreadedInputMaskImage;
-
-  unsigned int m_LastScanlineIndex = 0;
-
-  /** Output mask image may be eroded via m_PadUpperBounds and m_PadLowerBounds
-   *  along scan line direction */
-  MaskImagePointer m_OutputMaskImage = MaskImageType::New();
 };
 } // end namespace itk
 
