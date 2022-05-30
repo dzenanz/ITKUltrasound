@@ -56,13 +56,6 @@ itkBackscatterImageFilterTest(int argc, char * argv[])
   backscatterFilter->SetInput(inputImage);
   ITK_TEST_SET_GET_VALUE(inputImage, backscatterFilter->GetInput());
 
-  // Bad scanline direction produces an error
-  backscatterFilter->SetScanDirection(Dimension);
-  ITK_TRY_EXPECT_EXCEPTION(backscatterFilter->Update());
-
-  backscatterFilter->SetScanDirection(0);
-  ITK_TEST_SET_GET_VALUE(0, backscatterFilter->GetScanDirection());
-
   // Missing sampling frequency produces an error
   ITK_TRY_EXPECT_EXCEPTION(backscatterFilter->Update());
 

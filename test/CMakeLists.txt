@@ -177,7 +177,6 @@ itk_add_test(NAME itkBackscatterImageFilterTest
     DATA{Input/UnfusedRF-a0-spectra-cropped.mhd,UnfusedRF-a0-spectra-cropped.raw}
     ${ITK_TEST_OUTPUT_DIR}/itkBackscatterImageFilterTestOutput.mha
     100 # work units
-    0.458781 # median backscatter
   )
 itk_add_test(NAME itkBModeImageFilterTestTiming
   COMMAND UltrasoundTestDriver

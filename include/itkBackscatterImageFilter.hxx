@@ -24,9 +24,7 @@
 #include "itk_eigen.h"
 #include ITK_EIGEN(Dense)
 #include "itkMath.h"
-#include "itkImageLinearConstIteratorWithIndex.h"
-#include "itkImageSink.h"
-#include "itkImageRegionSplitterDirection.h"
+#include "itkImageScanlineConstIterator.h"
 
 namespace itk
 {
@@ -35,15 +33,6 @@ template <typename TInputImage, typename TOutputImage>
 BackscatterImageFilter<TInputImage, TOutputImage>::BackscatterImageFilter()
 {
   this->SetNumberOfRequiredInputs(1);
-  this->DynamicMultiThreadingOff();
-}
-
-template <typename TInputImage, typename TOutputImage>
-const ImageRegionSplitterBase *
-BackscatterImageFilter<TInputImage, TOutputImage>::GetImageRegionSplitter() const
-{
-  m_RegionSplitter->SetDirection(m_Direction);
-  return m_RegionSplitter.GetPointer();
 }
 
 template <typename TInputImage, typename TOutputImage>
@@ -51,11 +40,6 @@ void
 BackscatterImageFilter<TInputImage, TOutputImage>::VerifyPreconditions() const
 {
   Superclass::VerifyPreconditions();
-
-  if (this->GetDirection() >= ImageDimension)
-  {
-    itkExceptionMacro("Scan line direction must be a valid image dimension!");
-  }
 
   if (this->GetSamplingFrequencyMHz() < itk::Math::eps)
   {
@@ -71,7 +55,6 @@ BackscatterImageFilter<TInputImage, TOutputImage>::BeforeThreadedGenerateData()
 
   // Initialize metric image
   this->GetOutput()->Allocate();
-  this->GetOutput()->FillBuffer(0.0f);
 
   // Initialize iVars used in ComputeBackscatter()
   float nyquistFrequency = m_SamplingFrequencyMHz / 2;
@@ -88,9 +71,8 @@ BackscatterImageFilter<TInputImage, TOutputImage>::BeforeThreadedGenerateData()
 
 template <typename TInputImage, typename TOutputImage>
 void
-BackscatterImageFilter<TInputImage, TOutputImage>::ThreadedGenerateData(
-  const OutputRegionType & regionForThread,
-  ThreadIdType)
+BackscatterImageFilter<TInputImage, TOutputImage>::DynamicThreadedGenerateData(
+  const OutputRegionType & regionForThread)
 {
   if (regionForThread.GetNumberOfPixels() == 0)
   {
@@ -100,8 +82,7 @@ BackscatterImageFilter<TInputImage, TOutputImage>::ThreadedGenerateData(
   const InputImageType * input = this->GetInput();
   OutputImageType *      output = this->GetOutput();
 
-  ImageLinearConstIteratorWithIndex<TInputImage> it(input, regionForThread);
-  it.SetDirection(m_Direction);
+  ImageScanlineConstIterator<TInputImage> it(input, regionForThread);
   it.GoToBegin();
 
   // do the work
@@ -109,7 +90,6 @@ BackscatterImageFilter<TInputImage, TOutputImage>::ThreadedGenerateData(
   {
     while (!it.IsAtEndOfLine())
     {
-      // Advance until an inclusion is found
       InputIndexType index = it.GetIndex();
 
       OutputPixelType estimatedBackscatter = ComputeBackscatter(index);
@@ -161,7 +141,6 @@ BackscatterImageFilter<TInputImage, TOutputImage>::PrintSelf(std::ostream & os, 
 {
   Superclass::PrintSelf(os, indent);
 
-  os << indent << "Image axis representing RF scanline: " << this->GetDirection() << std::endl;
   os << indent << "Sampling frequency (MHz): " << this->GetSamplingFrequencyMHz() << std::endl;
   os << indent << "Frequency band: [" << this->GetFrequencyBandStartMHz() << "," << this->GetFrequencyBandEndMHz()
      << "]" << std::endl;

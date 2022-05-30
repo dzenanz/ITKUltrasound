@@ -90,10 +90,6 @@ public:
   using OutputRegionType = typename TOutputImage::RegionType;
   using OutputPixelType = typename TOutputImage::PixelType;
 
-  /** RF scanline direction */
-  itkSetMacro(Direction, unsigned int);
-  itkGetConstMacro(Direction, unsigned int);
-
   /** RF sampling frequency */
   itkSetMacro(SamplingFrequencyMHz, float);
   itkGetConstMacro(SamplingFrequencyMHz, float);
@@ -105,18 +101,6 @@ public:
   /* High end of RF frequency band. Must be a positive value.*/
   itkSetMacro(FrequencyBandEndMHz, float);
   itkGetConstMacro(FrequencyBandEndMHz, float);
-
-  // Alias for setting direction of RF waveform in data collection
-  void
-  SetScanDirection(unsigned int direction)
-  {
-    this->SetDirection(direction);
-  };
-  unsigned int
-  GetScanDirection()
-  {
-    return this->GetDirection();
-  };
 
   void
   PrintSelf(std::ostream & os, Indent indent) const override;
@@ -133,19 +117,13 @@ protected:
   BeforeThreadedGenerateData() override;
 
   void
-  ThreadedGenerateData(const OutputRegionType & regionForThread, ThreadIdType) override;
+  DynamicThreadedGenerateData(const OutputRegionType & regionForThread) override;
 
-  const ImageRegionSplitterBase *
-  GetImageRegionSplitter() const override;
-
-  /** Compute backscatter between two pixels in the RF spectra vector image.
-   *  Assumes that image spacing is in MM. */
+  /** Compute backscatter for a pixel in the RF spectra vector image. */
   OutputPixelType
   ComputeBackscatter(const InputIndexType & index) const;
 
 private:
-  unsigned int  m_Direction = 0;
-
   float m_SamplingFrequencyMHz = 0.0f;
   float m_FrequencyBandStartMHz = 0.0f;
   float m_FrequencyBandEndMHz = 0.0f;
@@ -155,9 +133,6 @@ private:
   unsigned int m_StartComponent = 0;
   unsigned int m_EndComponent = 0;
   unsigned int m_ConsideredComponents = 1;
-
-  /** Region splitter to ensure scanline is intact in threaded regions */
-  ImageRegionSplitterDirection::Pointer m_RegionSplitter = ImageRegionSplitterDirection::New();
 };
 } // end namespace itk
 
