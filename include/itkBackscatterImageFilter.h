@@ -22,11 +22,8 @@
 
 #include "itkImage.h"
 #include "itkImageToImageFilter.h"
-#include "itkImageRegionSplitterDirection.h"
 #include "itkMacro.h"
-#include "itkRGBPixel.h"
 #include "itkNumericTraits.h"
-#include "itkNumericTraitsRGBPixel.h"
 
 namespace itk
 {
@@ -42,9 +39,11 @@ namespace itk
  * Each pixel in the input image is a vector representing frequency
  * components at bins based on the sampling frequency.
  *
- * BackscatterImageFilter generates an RGB output image with
- * RGB channel intensities representing different backscatter estimates.
+ * BackscatterImageFilter generates a scalar output image with
+ * intensities representing backscatter estimates.
  *
+ * There are three types of estimates available, see documentation for
+ * EstimateType for detailed description.
  *
  * \sa MaskedImageToHistogramFilter
  * \sa Spectra1DImageFilter
@@ -55,7 +54,7 @@ namespace itk
  * \ingroup Ultrasound
  */
 template <typename TInputImage,
-          typename TOutputImage = Image<RGBPixel<float>, TInputImage::ImageDimension>>
+          typename TOutputImage = Image<float, TInputImage::ImageDimension>>
 class ITK_TEMPLATE_EXPORT BackscatterImageFilter : public ImageToImageFilter<TInputImage, TOutputImage>
 {
 public:
@@ -102,6 +101,16 @@ public:
   itkSetMacro(FrequencyBandEndMHz, float);
   itkGetConstMacro(FrequencyBandEndMHz, float);
 
+  /** Estimate Type (0=average, 1=slope, 2=intercept).
+   *
+   * 0. (Default) Average of intensities of selected frequency components.
+   * 1. Slope of a line fit to the selected frequency components.
+   * 2. Negative intercept of a line fit to the selected frequency components.
+   *    The intercept is negated because it is expected to be mostly negative.
+   */
+  itkSetMacro(EstimateType, unsigned int);
+  itkGetConstMacro(EstimateType, unsigned int);
+
   void
   PrintSelf(std::ostream & os, Indent indent) const override;
 
@@ -124,6 +133,8 @@ protected:
   ComputeBackscatter(const InputIndexType & index) const;
 
 private:
+  unsigned int m_EstimateType = 0;
+
   float m_SamplingFrequencyMHz = 0.0f;
   float m_FrequencyBandStartMHz = 0.0f;
   float m_FrequencyBandEndMHz = 0.0f;

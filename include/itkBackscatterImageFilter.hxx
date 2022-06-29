@@ -71,8 +71,7 @@ BackscatterImageFilter<TInputImage, TOutputImage>::BeforeThreadedGenerateData()
 
 template <typename TInputImage, typename TOutputImage>
 void
-BackscatterImageFilter<TInputImage, TOutputImage>::DynamicThreadedGenerateData(
-  const OutputRegionType & regionForThread)
+BackscatterImageFilter<TInputImage, TOutputImage>::DynamicThreadedGenerateData(const OutputRegionType & regionForThread)
 {
   if (regionForThread.GetNumberOfPixels() == 0)
   {
@@ -122,17 +121,27 @@ BackscatterImageFilter<TInputImage, TOutputImage>::ComputeBackscatter(const Inpu
     sum += sample[i + m_StartComponent];
   }
 
+  if (m_EstimateType == 0)
+  {
+    return sum / m_ConsideredComponents;
+  }
+
   // from https://eigen.tuxfamily.org/dox/group__LeastSquares.html
   Eigen::Matrix<float, 1, 2> lineFit = A.householderQr().solve(b);
   ScalarType                 frequencySlope = -lineFit(1);
   ScalarType                 frequencyIntercept = lineFit(0);
 
-  OutputPixelType result = NumericTraits<OutputPixelType>::Zero;
-  result[0] = sum / m_ConsideredComponents;
-  result[1] = frequencySlope;
-  result[2] = frequencyIntercept;
-
-  return result;
+  switch (m_EstimateType)
+  {
+    case 0: // handled above for efficiency (avoids unnecessary line fitting)
+    case 1:
+      return frequencySlope;
+    case 2:
+      return frequencyIntercept;
+    default:
+      itkExceptionMacro("Invalid EstimateType");
+      break;
+  }
 }
 
 template <typename TInputImage, typename TOutputImage>

@@ -23,7 +23,6 @@
 #include "itkTestingMacros.h"
 
 #include "itkBackscatterImageFilter.h"
-#include "itkImageToHistogramFilter.h"
 
 int
 itkBackscatterImageFilterTest(int argc, char * argv[])
@@ -31,23 +30,24 @@ itkBackscatterImageFilterTest(int argc, char * argv[])
   if (argc < 3)
   {
     std::cerr << "Usage: " << argv[0];
-    std::cerr << " spectraImage outputImage <numWorkUnits>";
+    std::cerr << " spectraImage outputImage estimateType <numWorkUnits>";
     std::cerr << std::endl;
     return EXIT_FAILURE;
   }
 
   using RealType = float;
-  using RGBtype = itk::RGBPixel<RealType>;
   const unsigned int Dimension = 3;
 
   using SpectraImageType = itk::VectorImage<RealType, Dimension>;
-  using OutputImageType = itk::Image<RGBtype, Dimension>;
+  using OutputImageType = itk::Image<RealType, Dimension>;
 
   SpectraImageType::Pointer inputImage = itk::ReadImage<SpectraImageType>(std::string(argv[1]));
 
   const std::string outputImagePath = argv[2];
 
-  unsigned int numWorkUnits = (argc > 3 ? std::stoi(argv[3]) : 1);
+  unsigned int estimateType = std::stoi(argv[3]);
+
+  unsigned int numWorkUnits = (argc > 4 ? std::stoi(argv[4]) : 1);
 
   // Initialize the filter
   using BackscatterFilterType = itk::BackscatterImageFilter<SpectraImageType, OutputImageType>;
@@ -68,6 +68,7 @@ itkBackscatterImageFilterTest(int argc, char * argv[])
   backscatterFilter->SetFrequencyBandEndMHz(20.0);
   ITK_TEST_SET_GET_VALUE(20.0, backscatterFilter->GetFrequencyBandEndMHz());
 
+  backscatterFilter->SetEstimateType(estimateType);
   backscatterFilter->SetNumberOfWorkUnits(numWorkUnits);
 
   ITK_EXERCISE_BASIC_OBJECT_METHODS(backscatterFilter, BackscatterImageFilter, ImageToImageFilter);

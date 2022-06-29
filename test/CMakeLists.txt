@@ -168,14 +168,52 @@ itk_add_test(NAME itkAttenuationImageFilterWholeImageTest
     0   # computation mode
     0.458781 # median attenuation
   )
-itk_add_test(NAME itkBackscatterImageFilterTest
+itk_add_test(NAME itkBackscatterImageFilterTest0_100
   COMMAND UltrasoundTestDriver
+  --compareIntensityTolerance 0.01
   --compare
-    DATA{Baseline/itkBackscatterImageFilterTestOutput.mha}
-    ${ITK_TEST_OUTPUT_DIR}/itkBackscatterImageFilterTestOutput.mha
+    DATA{Baseline/itkBackscatterImageFilterTest0Output.mha}
+    ${ITK_TEST_OUTPUT_DIR}/itkBackscatterImageFilterTest0_100Output.mha
   itkBackscatterImageFilterTest
     DATA{Input/UnfusedRF-a0-spectra-cropped.mhd,UnfusedRF-a0-spectra-cropped.raw}
-    ${ITK_TEST_OUTPUT_DIR}/itkBackscatterImageFilterTestOutput.mha
+    ${ITK_TEST_OUTPUT_DIR}/itkBackscatterImageFilterTest0_100Output.mha
+    0   # estimate type
+    100 # work units
+  )
+itk_add_test(NAME itkBackscatterImageFilterTest0_16
+  COMMAND UltrasoundTestDriver
+  --compareIntensityTolerance 0.01
+  --compare
+    DATA{Baseline/itkBackscatterImageFilterTest0Output.mha}
+    ${ITK_TEST_OUTPUT_DIR}/itkBackscatterImageFilterTest0_16Output.mha
+  itkBackscatterImageFilterTest
+    DATA{Input/UnfusedRF-a0-spectra-cropped.mhd,UnfusedRF-a0-spectra-cropped.raw}
+    ${ITK_TEST_OUTPUT_DIR}/itkBackscatterImageFilterTest0_16Output.mha
+    0  # estimate type
+    16 # work units
+  )
+itk_add_test(NAME itkBackscatterImageFilterTest1
+  COMMAND UltrasoundTestDriver
+  --compareIntensityTolerance 0.01
+  --compare
+    DATA{Baseline/itkBackscatterImageFilterTest1Output.mha}
+    ${ITK_TEST_OUTPUT_DIR}/itkBackscatterImageFilterTest1Output.mha
+  itkBackscatterImageFilterTest
+    DATA{Input/UnfusedRF-a0-spectra-cropped.mhd,UnfusedRF-a0-spectra-cropped.raw}
+    ${ITK_TEST_OUTPUT_DIR}/itkBackscatterImageFilterTest1Output.mha
+    1   # estimate type
+    100 # work units
+  )
+itk_add_test(NAME itkBackscatterImageFilterTest2
+  COMMAND UltrasoundTestDriver
+  --compareIntensityTolerance 0.01
+  --compare
+    DATA{Baseline/itkBackscatterImageFilterTest2Output.mha}
+    ${ITK_TEST_OUTPUT_DIR}/itkBackscatterImageFilterTest2Output.mha
+  itkBackscatterImageFilterTest
+    DATA{Input/UnfusedRF-a0-spectra-cropped.mhd,UnfusedRF-a0-spectra-cropped.raw}
+    ${ITK_TEST_OUTPUT_DIR}/itkBackscatterImageFilterTest2Output.mha
+    2   # estimate type
     100 # work units
   )
 itk_add_test(NAME itkBModeImageFilterTestTiming
