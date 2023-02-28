@@ -24,9 +24,38 @@
 #include "itkImageToImageFilter.h"
 #include "itkMacro.h"
 #include "itkNumericTraits.h"
+#include "UltrasoundExport.h"
 
 namespace itk
 {
+/** \class BackscatterImageFilterEnums
+ * \brief Contains all enum classes used by BackscatterImageFilter class.
+ * \ingroup ITKUltrasound
+ */
+class BackscatterImageFilterEnums
+{
+public:
+  /**
+   * \class BackscatterEstimateType
+   * \ingroup ITKUltrasound
+   * What estimation to use for Back-Scatter Coefficient estimation.
+   *
+   * AVERAGE: Average of intensities of selected frequency components.
+   * SLOPE: Negative slope of a line fit to the selected frequency components.
+   *   The slope is negated because it is expected to be mostly negative.
+   * INTERCEPT: Intercept of a line fit to the selected frequency components.
+   */
+  enum class BackscatterEstimateType : uint8_t
+  {
+    AVERAGE = 0,  // Average of intensities of selected frequency components.
+    SLOPE = 1,    // (Negative) Slope of a line fit to the selected frequency components.
+    INTERCEPT = 2 // Intercept of a line fit to the selected frequency components.
+  };
+};
+/** Define how to print enumerations */
+extern Ultrasound_EXPORT std::ostream &
+operator<<(std::ostream & out, const BackscatterImageFilterEnums::BackscatterEstimateType value);
+
 /** \class BackscatterImageFilter
  * \brief Computes the estimated backscatter coefficient
  *
@@ -53,8 +82,7 @@ namespace itk
  * \ingroup ITKImageStatistics
  * \ingroup Ultrasound
  */
-template <typename TInputImage,
-          typename TOutputImage = Image<float, TInputImage::ImageDimension>>
+template <typename TInputImage, typename TOutputImage = Image<float, TInputImage::ImageDimension>>
 class ITK_TEMPLATE_EXPORT BackscatterImageFilter : public ImageToImageFilter<TInputImage, TOutputImage>
 {
 public:
@@ -103,15 +131,16 @@ public:
   itkSetMacro(FrequencyBandEndMHz, float);
   itkGetConstMacro(FrequencyBandEndMHz, float);
 
-  /** Estimate Type (0=average, 1=slope, 2=intercept).
+  using EstimateTypeEnum = BackscatterImageFilterEnums::BackscatterEstimateType;
+
+  /** What estimation to use for Back-Scatter Coefficient estimation.
    *
-   * 0. (Default) Average of intensities of selected frequency components.
-   * 1. Slope of a line fit to the selected frequency components.
-   * 2. Negative intercept of a line fit to the selected frequency components.
-   *    The intercept is negated because it is expected to be mostly negative.
+   * AVERAGE: Average of intensities of selected frequency components.
+   * SLOPE: Negative slope of a line fit to the selected frequency components.
+   * INTERCEPT: Intercept of a line fit to the selected frequency components.
    */
-  itkSetMacro(EstimateType, unsigned int);
-  itkGetConstMacro(EstimateType, unsigned int);
+  itkSetEnumMacro(EstimateType, EstimateTypeEnum);
+  itkGetEnumMacro(EstimateType, EstimateTypeEnum);
 
   void
   PrintSelf(std::ostream & os, Indent indent) const override;
@@ -135,7 +164,7 @@ protected:
   ComputeBackscatter(const InputIndexType & index) const;
 
 private:
-  unsigned int m_EstimateType = 0;
+  EstimateTypeEnum m_EstimateType = EstimateTypeEnum::AVERAGE;
 
   float m_SamplingFrequencyMHz = 0.0f;
   float m_FrequencyBandStartMHz = 0.0f;

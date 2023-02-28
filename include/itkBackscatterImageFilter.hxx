@@ -128,7 +128,7 @@ BackscatterImageFilter<TInputImage, TOutputImage>::ComputeBackscatter(const Inpu
     sum += sample[i + m_StartComponent];
   }
 
-  if (m_EstimateType == 0)
+  if (m_EstimateType == EstimateTypeEnum::AVERAGE)
   {
     return sum / m_ConsideredComponents;
   }
@@ -140,10 +140,10 @@ BackscatterImageFilter<TInputImage, TOutputImage>::ComputeBackscatter(const Inpu
 
   switch (m_EstimateType)
   {
-    // case 0: // handled above for efficiency (avoids unnecessary line fitting)
-    case 1:
+    // AVERAGE case handled above for efficiency (avoids unnecessary line fitting)
+    case EstimateTypeEnum::SLOPE:
       return frequencySlope;
-    case 2:
+    case EstimateTypeEnum::INTERCEPT:
       return frequencyIntercept;
     default:
       itkExceptionMacro("Invalid EstimateType");

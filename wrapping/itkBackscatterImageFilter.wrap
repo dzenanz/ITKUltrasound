@@ -1,4 +1,8 @@
+set(WRAPPER_AUTO_INCLUDE_HEADERS OFF)
 itk_wrap_include("itkVectorImage.h")
+itk_wrap_include("itkBackscatterImageFilter.h")
+itk_wrap_simple_class("itk::BackscatterImageFilterEnums")
+
 itk_wrap_class("itk::BackscatterImageFilter" POINTER)
   foreach(d ${ITK_WRAP_IMAGE_DIMS})
     foreach(rt ${WRAP_ITK_REAL})

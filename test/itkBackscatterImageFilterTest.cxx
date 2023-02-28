@@ -61,14 +61,15 @@ itkBackscatterImageFilterTest(int argc, char * argv[])
 
   backscatterFilter->SetSamplingFrequencyMHz(60);
   ITK_TEST_SET_GET_VALUE(60.0, backscatterFilter->GetSamplingFrequencyMHz());
-  ITK_TRY_EXPECT_NO_EXCEPTION(backscatterFilter->UpdateOutputInformation());
+  ITK_TRY_EXPECT_EXCEPTION(backscatterFilter->UpdateOutputInformation());
 
   backscatterFilter->SetFrequencyBandStartMHz(5.0);
   ITK_TEST_SET_GET_VALUE(5.0, backscatterFilter->GetFrequencyBandStartMHz());
   backscatterFilter->SetFrequencyBandEndMHz(20.0);
   ITK_TEST_SET_GET_VALUE(20.0, backscatterFilter->GetFrequencyBandEndMHz());
 
-  backscatterFilter->SetEstimateType(estimateType);
+  auto estimateEnum = static_cast<typename itk::BackscatterImageFilterEnums::BackscatterEstimateType>(estimateType);
+  backscatterFilter->SetEstimateType(estimateEnum);
   backscatterFilter->SetNumberOfWorkUnits(numWorkUnits);
 
   ITK_EXERCISE_BASIC_OBJECT_METHODS(backscatterFilter, BackscatterImageFilter, ImageToImageFilter);

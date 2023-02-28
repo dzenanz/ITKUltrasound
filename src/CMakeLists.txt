@@ -1,4 +1,5 @@
 set(Ultrasound_SRCS
+  itkBackscatterImageFilter.cxx
   itkCurvilinearFFTImageFilterInitFactory.cxx
   itkHDF5UltrasoundImageIOFactory.cxx
   itkHDF5UltrasoundImageIO.cxx
