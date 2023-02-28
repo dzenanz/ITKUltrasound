@@ -93,11 +93,13 @@ public:
   itkSetMacro(SamplingFrequencyMHz, float);
   itkGetConstMacro(SamplingFrequencyMHz, float);
 
-  /** Low end of RF frequency band. Must be a positive value. */
+  /** Low end of RF frequency band to use in backscatter analysis.
+   * Must be a positive value. */
   itkSetMacro(FrequencyBandStartMHz, float);
   itkGetConstMacro(FrequencyBandStartMHz, float);
 
-  /* High end of RF frequency band. Must be a positive value.*/
+  /* High end of RF frequency band to use in backscatter analysis.
+   * Must be a positive value.*/
   itkSetMacro(FrequencyBandEndMHz, float);
   itkGetConstMacro(FrequencyBandEndMHz, float);
 

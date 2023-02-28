@@ -45,6 +45,13 @@ BackscatterImageFilter<TInputImage, TOutputImage>::VerifyPreconditions() const
   {
     itkExceptionMacro("RF sampling frequency was not set!");
   }
+
+  if (this->GetFrequencyBandEndMHz() <= this->GetFrequencyBandStartMHz())
+  {
+    itkExceptionMacro(<< "FrequencyBandStart must be less than FrequencyBandEnd!"
+                      << "\n  FrequencyBandStartMHz: " << this->GetFrequencyBandStartMHz()
+                      << "\n  FrequencyBandEndMHz: " << this->GetFrequencyBandEndMHz());
+  }
 }
 
 template <typename TInputImage, typename TOutputImage>
@@ -133,7 +140,7 @@ BackscatterImageFilter<TInputImage, TOutputImage>::ComputeBackscatter(const Inpu
 
   switch (m_EstimateType)
   {
-    case 0: // handled above for efficiency (avoids unnecessary line fitting)
+    // case 0: // handled above for efficiency (avoids unnecessary line fitting)
     case 1:
       return frequencySlope;
     case 2:
@@ -151,8 +158,9 @@ BackscatterImageFilter<TInputImage, TOutputImage>::PrintSelf(std::ostream & os, 
   Superclass::PrintSelf(os, indent);
 
   os << indent << "Sampling frequency (MHz): " << this->GetSamplingFrequencyMHz() << std::endl;
-  os << indent << "Frequency band: [" << this->GetFrequencyBandStartMHz() << "," << this->GetFrequencyBandEndMHz()
-     << "]" << std::endl;
+  os << indent << "Analysis frequency band: [" << this->GetFrequencyBandStartMHz() << ","
+     << this->GetFrequencyBandEndMHz() << "]" << std::endl;
+  os << indent << "EstimateType" << this->GetEstimateType() << std::endl;
 }
 } // end namespace itk
 #endif // itkBackscatterImageFilter_hxx
